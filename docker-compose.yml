@@ -1,0 +1,12 @@
+services:
+  frosthaven:
+    build: .
+    image: frosthaven-companion
+    container_name: frosthaven
+    ports:
+      - "80:80"     # redirects to HTTPS
+      - "443:443"   # the app
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./rules:/usr/share/nginx/html/rules:ro   # rulebook page images + search index (on-demand)
+    restart: unless-stopped

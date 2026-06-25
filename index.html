@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Frosthaven Companion</title>
+<style>
+  :root{
+    --bg:#0d1620; --panel:#16242f; --panel2:#1d3242; --line:#2a4254;
+    --text:#e9eff4; --muted:#8aa0b0; --accent:#43b6d8; --gold:#e8b54a;
+    --good:#4caf7d; --warn:#e0a13a; --bad:#d8584f; --grey:#6f8597; --curse:#a584e0;
+    --radius:14px; --tap:48px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#eaf0f4; --panel:#ffffff; --panel2:#eef3f7; --line:#d2dde4;
+      --text:#152230; --muted:#5a6f7e; --curse:#7a5bc0; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+    padding:0 0 calc(env(safe-area-inset-bottom) + 24px);
+  }
+  .topbar{
+    position:sticky; top:0; z-index:5;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; padding-top:calc(8px + env(safe-area-inset-top));
+    background:linear-gradient(180deg,var(--bg) 75%,transparent);
+    backdrop-filter:saturate(140%) blur(4px);
+  }
+  .topbar h1{ margin:0; font-size:1rem; font-weight:700; letter-spacing:.2px;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .topbar h1 .ice{ color:var(--accent); flex:none }
+  .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font:inherit; font-weight:600;
+    border-radius:12px; cursor:pointer; touch-action:manipulation; user-select:none;
+    -webkit-user-select:none; transition:transform .06s ease, background .15s ease; }
+  .btn:active{ transform:scale(.95) }
+  .btn:disabled{ opacity:.38; cursor:default; transform:none }
+  .topbtns{ display:flex; gap:8px; flex:none }
+  .btn.add{ padding:7px 12px; min-height:36px; font-size:.85rem; white-space:nowrap;
+    flex:none; border-color:var(--accent); color:var(--accent) }
+  .btn.rules{ padding:7px 12px; min-height:36px; font-size:.85rem; white-space:nowrap;
+    flex:none; border-color:var(--gold); color:var(--gold) }
+
+  main{ max-width:1180px; margin:0 auto; padding:4px 14px 0;
+    display:flex; flex-wrap:wrap; gap:16px; justify-content:center; align-items:flex-start }
+  .empty{ flex:1 1 100%; text-align:center; color:var(--muted); padding:48px 12px }
+  .card{ flex:1 1 260px; max-width:440px; min-width:0;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:14px 14px 16px; display:flex;
+    flex-direction:column; gap:14px; }
+
+  .hd{ display:flex; align-items:center; gap:8px }
+  .name{ flex:1; min-width:0; background:transparent; border:1px solid transparent;
+    color:var(--text); font:inherit; font-size:1.1rem; font-weight:700;
+    padding:7px 8px; border-radius:10px; }
+  .name:hover{ border-color:var(--line) }
+  .name:focus{ outline:none; border-color:var(--accent); background:var(--panel2) }
+  .trash{ flex:none; width:var(--tap); min-height:var(--tap); font-size:1.1rem;
+    color:var(--muted); display:flex; align-items:center; justify-content:center }
+  .trash.armed{ color:#fff; background:var(--bad); border-color:var(--bad);
+    width:auto; padding:0 12px; font-size:.85rem; font-weight:700 }
+
+  .sect{ background:var(--panel2); border-radius:12px; padding:12px }
+  .lbl{ font-size:.72rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:0 0 8px }
+
+  .row{ display:flex; align-items:center; justify-content:center; gap:10px }
+  .step{ width:var(--tap); height:var(--tap); font-size:1.5rem; line-height:1;
+    display:flex; align-items:center; justify-content:center; flex:none }
+  .step.sm{ width:48px; height:48px; font-size:.85rem; font-weight:700 }
+  .mini{ min-height:var(--tap); padding:0 14px; font-size:.8rem; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center }
+  .readout{ display:flex; align-items:baseline; justify-content:center; gap:2px; flex:1; min-width:0 }
+  .num{ width:2.6ch; background:transparent; border:none; border-bottom:1.5px dashed var(--line);
+    color:var(--text); font:inherit; font-size:2rem; font-weight:800; text-align:center; padding:0 0 2px; }
+  .num.sm{ font-size:1.1rem; width:3.4ch; font-weight:700 }
+  .num:focus{ outline:none; border-bottom-color:var(--accent) }
+  .slash{ font-size:1.4rem; color:var(--muted); font-weight:600 }
+  .fastrow{ display:flex; justify-content:center; gap:8px; margin-top:8px }
+
+  .bar{ height:8px; border-radius:6px; background:rgba(127,150,170,.22); overflow:hidden; margin-top:10px }
+  .bar > i{ display:block; height:100%; border-radius:6px; transition:width .2s ease, background .2s ease }
+
+  /* deck */
+  .deck{ display:flex; flex-direction:column; gap:10px; align-items:center }
+  .lblrow{ display:flex; align-items:center; gap:8px; width:100%; margin-bottom:2px }
+  .lblrow .lbl{ margin:0; flex:1 }
+  .edittoggle{ -webkit-appearance:none; appearance:none; background:none; border:none;
+    color:var(--accent); font:inherit; font-size:.74rem; font-weight:700;
+    min-height:var(--tap); padding:0 10px; display:inline-flex; align-items:center;
+    cursor:pointer; touch-action:manipulation }
+  .counts{ font-size:.82rem; color:var(--muted); text-align:center; width:100% }
+  .banner{ width:100%; text-align:center; font-size:.82rem; font-weight:700;
+    color:var(--warn); border:1px solid var(--warn); background:rgba(224,161,58,.12);
+    border-radius:10px; padding:8px; display:none }
+  .banner.on{ display:block }
+
+  /* draw mode + result */
+  .seg{ display:flex; gap:6px; width:100% }
+  .seg-btn{ flex:1; min-height:var(--tap); font-size:.85rem; font-weight:700;
+    border:1px solid var(--line); background:var(--panel2); color:var(--muted);
+    border-radius:12px; cursor:pointer; touch-action:manipulation; -webkit-appearance:none; appearance:none }
+  .seg-btn.on{ color:var(--accent); border-color:var(--accent); background:rgba(67,182,216,.12) }
+  .seg-btn.adv.on{ border-color:var(--good); background:rgba(76,175,125,.14); color:var(--good) }
+  .seg-btn.dis.on{ border-color:var(--bad); background:rgba(216,88,79,.14); color:var(--bad) }
+  .deckbtns{ display:flex; gap:10px; width:100% }
+  .draw{ flex:2; min-height:54px; font-size:1.1rem; border-color:var(--accent); color:#05222b; background:var(--accent) }
+  .shuffle{ flex:1; min-height:54px }
+  .shuffle.hot{ border-color:var(--warn); color:var(--warn); animation:pulse 1.1s ease-in-out infinite }
+  .tokrow{ display:flex; gap:8px; width:100% }
+  .tokbtn{ flex:1; min-height:var(--tap); font-size:.92rem }
+
+  .result{ width:100%; border-radius:12px; border:2px solid var(--line); background:var(--bg);
+    padding:10px; display:flex; flex-direction:column; gap:8px; align-items:center; position:relative; min-height:84px }
+  .modebadge{ position:absolute; top:6px; right:8px; font-size:.64rem; font-weight:800; letter-spacing:.5px;
+    padding:2px 7px; border-radius:999px; border:1px solid var(--accent); color:var(--accent) }
+  .modebadge.adv{ border-color:var(--good); color:var(--good) }
+  .modebadge.dis{ border-color:var(--bad); color:var(--bad) }
+  .chain{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:100% }
+  .mface{ min-width:56px; border-radius:10px; border:1.5px solid var(--line); background:var(--panel);
+    padding:6px 8px; display:flex; flex-direction:column; align-items:center; gap:2px }
+  .mface.used{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) }
+  .mface.muted{ opacity:.42 }
+  .mface.big{ min-width:0; width:100%; min-height:64px; justify-content:center; border-style:dashed; color:var(--muted) }
+  .mval{ font-size:1.5rem; font-weight:900; line-height:1 }
+  .mval.pos{ color:var(--good) } .mval.neg{ color:var(--bad) } .mval.neu{ color:var(--text) }
+  .mval.crit{ color:var(--gold) } .mval.null{ color:var(--grey) } .mval.curse{ color:var(--curse) }
+  .roll{ font-size:.62rem; color:var(--accent); font-weight:800 }
+  .mefx{ display:flex; gap:3px; flex-wrap:wrap; justify-content:center }
+  .mi{ font-size:.8rem }
+  .cap{ font-size:.66rem; color:var(--muted) }
+  .resultline{ font-size:1.6rem; font-weight:900; text-align:center }
+  .efx{ display:flex; flex-wrap:wrap; gap:5px; justify-content:center }
+  .tag{ font-size:.72rem; font-weight:700; color:var(--text); background:var(--panel2);
+    border:1px solid var(--line); border-radius:999px; padding:3px 8px }
+
+  /* editor */
+  .editor{ display:none; flex-direction:column; gap:8px; width:100%; margin-top:6px;
+    border-top:1px solid var(--line); padding-top:10px }
+  .editor.open{ display:flex }
+  .erow{ display:flex; align-items:center; gap:8px }
+  .erow .chip{ flex:0 0 3.4ch; min-height:var(--tap); display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:.95rem; color:var(--text) }
+  .erow .num.sm{ flex:1 }
+  .ftr{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px }
+
+  .customlist{ display:flex; flex-direction:column; gap:6px }
+  .crow{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; background:var(--panel); border-radius:10px; padding:6px 8px }
+  .cval{ flex:0 0 auto; min-width:3.2ch; min-height:34px; padding:0 7px; display:inline-flex; align-items:center;
+    justify-content:center; font-weight:800; border-radius:8px; border:1px solid var(--line) }
+  .cmeta{ flex:1; min-width:60px; display:flex; align-items:center; gap:5px; font-size:.78rem; color:var(--muted); flex-wrap:wrap }
+  .cnt{ min-width:2ch; text-align:center; font-weight:800 }
+  .crow .trash{ font-size:.95rem }
+
+  .builder{ border:1px dashed var(--line); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px }
+  .vrow{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center }
+  .vpill,.toggle{ -webkit-appearance:none; appearance:none; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font:inherit; font-weight:700; cursor:pointer;
+    touch-action:manipulation; border-radius:10px }
+  .vpill{ min-height:var(--tap); padding:0 12px }
+  .vpill.on{ border-color:var(--accent); color:var(--accent); background:rgba(67,182,216,.12) }
+  .vpill.on.x2{ border-color:var(--gold); color:var(--gold); background:rgba(232,181,74,.12) }
+  .vpill.on.nul{ border-color:var(--grey); color:var(--grey) }
+  .blbl{ font-size:.64rem; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); align-self:flex-start }
+  .bprev{ align-self:center; min-width:104px; border-radius:12px; border:2px solid var(--accent);
+    background:var(--bg); padding:8px 16px; display:flex; flex-direction:column; align-items:center; gap:5px }
+  .bprev-val{ font-size:2.1rem; font-weight:900; line-height:1 }
+  .valctl{ display:flex; align-items:center; justify-content:center; gap:16px }
+  .vstep{ width:60px; height:60px; font-size:2rem; line-height:1; display:flex; align-items:center; justify-content:center;
+    border:2px solid var(--accent); color:var(--accent); background:rgba(67,182,216,.12); border-radius:12px; flex:none }
+  .vstep:disabled{ opacity:.35 }
+  .vnum{ font-size:2.2rem; font-weight:900; min-width:3.4ch; text-align:center }
+  .vspecial{ display:flex; gap:8px; justify-content:center }
+  .toggle{ width:100%; min-height:var(--tap); color:var(--muted) }
+  .toggle.on{ border-color:var(--accent); color:var(--accent); background:rgba(67,182,216,.12) }
+  .toggle:disabled{ opacity:.38; cursor:default }
+  .palette{ display:flex; flex-wrap:wrap; gap:6px }
+  .pgrp{ width:100%; font-size:.64rem; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-top:2px }
+  .pchip{ -webkit-appearance:none; appearance:none; min-height:var(--tap); padding:0 10px; border-radius:10px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:.78rem; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:4px; touch-action:manipulation }
+  .pchip.on{ border-color:var(--accent); color:var(--accent); background:rgba(67,182,216,.12) }
+  .nstep{ display:inline-flex; align-items:center; gap:3px; margin-left:5px }
+  .nstep b{ min-width:1.2ch; text-align:center }
+  .nstep button{ width:40px; height:40px; border-radius:7px; border:1px solid var(--line);
+    background:var(--panel); color:var(--text); font-weight:800; cursor:pointer; touch-action:manipulation }
+  .bactions{ display:flex; gap:8px }
+  .bactions .btn{ flex:1; min-height:var(--tap) }
+  .addbtn{ border-color:var(--accent); color:var(--accent) }
+
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(224,161,58,.5) } 50%{ box-shadow:0 0 0 6px rgba(224,161,58,0) } }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important } }
+  .num::-webkit-outer-spin-button,.num::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+
+  /* ---------- rules lookup overlay ---------- */
+  .rules-ov{ position:fixed; inset:0; z-index:50; display:none; flex-direction:column;
+    background:var(--bg); }
+  .rules-ov.open{ display:flex }
+  .rules-bar{ flex:none; display:flex; align-items:center; gap:8px;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px; border-bottom:1px solid var(--line);
+    background:var(--panel); }
+  .rules-search{ flex:1; min-width:0; min-height:42px; padding:0 12px; border-radius:12px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    font:inherit; font-size:1rem; -webkit-appearance:none; appearance:none }
+  .rules-search:focus{ outline:none; border-color:var(--gold) }
+  .rules-x{ flex:none; width:42px; height:42px; font-size:1.4rem; line-height:1;
+    display:flex; align-items:center; justify-content:center; color:var(--muted) }
+  .rules-body{ flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
+
+  /* results list */
+  .rules-results{ max-width:760px; margin:0 auto; padding:12px 12px 40px;
+    display:flex; flex-direction:column; gap:14px }
+  .rules-hint{ color:var(--muted); text-align:center; padding:36px 12px; font-size:.95rem }
+  .rgrp-lbl{ font-size:.72rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:0 0 6px }
+  .jumps{ display:flex; flex-direction:column; gap:8px }
+  .jrow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 10px }
+  .jterm{ flex:1; min-width:90px; font-weight:700; text-transform:capitalize }
+  .jpage{ -webkit-appearance:none; appearance:none; min-height:38px; padding:0 12px;
+    border-radius:999px; border:1px solid var(--gold); color:var(--gold);
+    background:rgba(232,181,74,.10); font:inherit; font-weight:700; font-size:.82rem;
+    cursor:pointer; touch-action:manipulation }
+  .ftrow{ -webkit-appearance:none; appearance:none; width:100%; text-align:left;
+    display:flex; gap:10px; align-items:baseline; background:var(--panel);
+    border:1px solid var(--line); border-radius:12px; padding:10px 12px; color:var(--text);
+    font:inherit; cursor:pointer; touch-action:manipulation }
+  .ftrow:active{ background:var(--panel2) }
+  .ftpage{ flex:none; font-weight:800; color:var(--accent); font-size:.85rem; min-width:3.2em }
+  .ftsnip{ flex:1; min-width:0; font-size:.9rem; line-height:1.4; color:var(--muted) }
+  .sitefoot{ margin:36px auto 28px; max-width:680px; padding:18px 16px 0;
+    border-top:1px solid var(--line); color:var(--muted);
+    font-size:.72rem; line-height:1.55; text-align:center }
+  .sitefoot strong{ color:var(--text); font-weight:600 }
+  .sitefoot a{ color:var(--accent); text-decoration:none }
+  .sitefoot a:hover{ text-decoration:underline }
+  .ftsnip mark{ background:rgba(232,181,74,.30); color:var(--text); border-radius:3px; padding:0 1px }
+
+  /* page viewer */
+  .rules-view{ display:none; flex-direction:column; flex:1; min-height:0 }
+  .rules-view.open{ display:flex }
+  .pv-nav{ flex:none; display:flex; align-items:center; gap:8px; padding:8px 12px;
+    border-bottom:1px solid var(--line); background:var(--panel) }
+  .pv-back{ -webkit-appearance:none; appearance:none; min-height:40px; padding:0 12px;
+    border-radius:10px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--text); font:inherit; font-weight:700; font-size:.85rem; cursor:pointer; touch-action:manipulation }
+  .pv-pos{ flex:1; text-align:center; font-weight:700; font-size:.9rem }
+  .pv-step{ -webkit-appearance:none; appearance:none; width:44px; height:40px;
+    border-radius:10px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--text); font:inherit; font-size:1.3rem; font-weight:800; cursor:pointer; touch-action:manipulation }
+  .pv-step:disabled{ opacity:.35 }
+  .pv-scroll{ flex:1; overflow:auto; -webkit-overflow-scrolling:touch; text-align:center;
+    background:#0b1118; padding:10px }
+  .pv-img{ max-width:100%; height:auto; border-radius:6px; background:#fff;
+    box-shadow:0 2px 14px rgba(0,0,0,.5) }
+  .pv-img.zoom{ max-width:none; width:175% }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><span class="ice">❄</span> Frosthaven Companion</h1>
+    <div class="topbtns">
+      <button class="btn rules" id="rulesBtn" aria-label="Open rulebook">📖 Rules</button>
+      <button class="btn add" id="addBtn" aria-label="Add character">+ Character</button>
+    </div>
+  </div>
+  <main id="list"></main>
+
+  <footer class="sitefoot">
+    <strong>Frosthaven Companion</strong> — unofficial, fan-made tool. Not affiliated with or endorsed by Cephalofair Games.<br>
+    Frosthaven, its rulebook, and all related text and artwork are © 2023 Cephalofair Games, LLC. All rights reserved.
+    Rulebook pages are reproduced here for personal player reference only.
+    Cephalofair — if you'd like this content removed, <a href="https://github.com/Frazic/frosthaven-companion/issues" target="_blank" rel="noopener">open an issue</a> and I'll take it down promptly.<br>
+    <a href="https://github.com/Frazic/frosthaven-companion" target="_blank" rel="noopener">Source on GitHub</a>
+  </footer>
+
+<script>
+"use strict";
+(function(){
+  // ---------- constants ----------
+  var KEY = "fh.companion.v1";
+  var STD = ["+0","+1","-1","+2","-2","x2","null"];
+  var BASE_TALLY = {"+0":6,"+1":5,"-1":5,"+2":1,"-2":1,"x2":1,"null":1};
+  var BASE_SIZE = 20;
+  var BOUNDS = {"+0":[0,10],"+1":[0,12],"-1":[0,6],"+2":[0,6],"-2":[0,3],"x2":[0,3],"null":[0,3]};
+  var TOKEN_CAP = 10;     // bless / curse supply
+  var CUSTOM_CAP = 10;    // copies per custom def
+  var CHAIN_GUARD = 200;  // pathological rolling-chain backstop
+  var VAL_MAX = 12;
+
+  // closed, display-only effect vocabulary
+  var EFFECT_META = {
+    poison:{g:"☠",l:"Poison",grp:"Status"}, wound:{g:"🩸",l:"Wound",grp:"Status"},
+    muddle:{g:"?",l:"Muddle",grp:"Status"}, immobilize:{g:"⛓",l:"Immobilize",grp:"Status"},
+    disarm:{g:"✋",l:"Disarm",grp:"Status"}, stun:{g:"💫",l:"Stun",grp:"Status"},
+    strengthen:{g:"⬆",l:"Strengthen",grp:"Status"}, regenerate:{g:"♻",l:"Regen",grp:"Status"},
+    ward:{g:"⛨",l:"Ward",grp:"Status"}, brittle:{g:"🧊",l:"Brittle",grp:"Status"},
+    bane:{g:"☣",l:"Bane",grp:"Status"}, invisible:{g:"👻",l:"Invisible",grp:"Status"},
+    curse:{g:"🟣",l:"Curse",grp:"Status"}, bless:{g:"✦",l:"Bless",grp:"Status"},
+    pierce:{g:"▶",l:"Pierce",grp:"Combat",n:true}, push:{g:"»",l:"Push",grp:"Combat",n:true},
+    pull:{g:"«",l:"Pull",grp:"Combat",n:true}, target:{g:"🎯",l:"Target",grp:"Combat",n:true},
+    heal:{g:"✚",l:"Heal",grp:"Combat",n:true}, shield:{g:"🛡",l:"Shield",grp:"Combat",n:true},
+    retaliate:{g:"↩",l:"Retaliate",grp:"Combat",n:true},
+    fire:{g:"🔥",l:"Fire",grp:"Element"}, ice:{g:"❄",l:"Ice",grp:"Element"},
+    air:{g:"🌀",l:"Air",grp:"Element"}, earth:{g:"⛰",l:"Earth",grp:"Element"},
+    light:{g:"☀",l:"Light",grp:"Element"}, dark:{g:"🌑",l:"Dark",grp:"Element"}
+  };
+  var EFFECT_GROUPS = [
+    ["Status", ["poison","wound","muddle","immobilize","disarm","stun","strengthen","regenerate","ward","brittle","bane","invisible","curse","bless"]],
+    ["Combat", ["pierce","push","pull","target","heal","shield","retaliate"]],
+    ["Element", ["fire","ice","air","earth","light","dark"]]
+  ];
+
+  function isStd(x){ return STD.indexOf(x)>=0; }
+  function isVol(x){ return x==="bless"||x==="curse"; }
+
+  // ---------- pure helpers ----------
+  function clamp(n,lo,hi){ return n<lo?lo:(n>hi?hi:n); }
+  function toInt(n){ n=Math.round(Number(n)); return isFinite(n)?n:0; }
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function expand(b){ var a=[]; for(var i=0;i<STD.length;i++){ var k=STD[i], n=b[k]||0; while(n-->0) a.push(k); } return a; }
+  function expandCustom(cards){ var a=[]; for(var i=0;i<cards.length;i++){ var n=cards[i].count; while(n-->0) a.push(cards[i].id); } return a; }
+  function sumStd(b){ var s=0; for(var i=0;i<STD.length;i++) s+=(b[STD[i]]||0); return s; }
+  function cloneBuild(b){ var o={}; for(var i=0;i<STD.length;i++) o[STD[i]]=b[STD[i]]||0; return o; }
+  function clampBuild(b){ var o={}; for(var i=0;i<STD.length;i++){ var k=STD[i]; o[k]=clamp(toInt(b[k]),BOUNDS[k][0],BOUNDS[k][1]); } return o; }
+  function tallyStdFull(arr){ var o={}; for(var i=0;i<STD.length;i++) o[STD[i]]=0; for(var j=0;j<arr.length;j++){ if(isStd(arr[j])) o[arr[j]]++; } return o; }
+  function sameTally(a,b){ for(var i=0;i<STD.length;i++){ if((a[STD[i]]||0)!==(b[STD[i]]||0)) return false; } return true; }
+  function countVol(arr,tok){ var n=0; for(var i=0;i<arr.length;i++){ if(arr[i]===tok) n++; } return n; }
+  function countRef(arr,id){ var n=0; for(var i=0;i<arr.length;i++){ if(arr[i]===id) n++; } return n; }
+
+  function normValue(v){
+    if(v==="x2"||v==="X2") return "x2";
+    if(typeof v==="string"){ var lv=v.toLowerCase(); if(lv==="null"||lv==="x0") return "null"; }
+    var n=clamp(toInt(v),-VAL_MAX,VAL_MAX); return (n>=0?"+":"")+n;
+  }
+  function kindVal(v){ if(v==="x2") return {mode:"x2"}; if(v==="null") return {mode:"null"}; return {mode:"add", n:toInt(v)}; }
+  function faceForValue(v){
+    if(v==="x2") return ["x2","crit"]; if(v==="null") return ["NULL","null"];
+    var n=toInt(v); return [(n>=0?"+":"")+n, n>0?"pos":n<0?"neg":"neu"];
+  }
+  function splitTag(e){ e=String(e); var i=e.indexOf(":"); return i<0?{base:e,n:null}:{base:e.slice(0,i), n:Math.max(0,toInt(e.slice(i+1)))}; }
+  function dedupeEffects(arr){
+    if(!Array.isArray(arr)) return [];
+    var out=[], seen={};
+    for(var i=0;i<arr.length && out.length<16;i++){
+      var t=splitTag(arr[i]); var m=EFFECT_META[t.base];
+      if(!m || seen[t.base]) continue; seen[t.base]=1;
+      out.push((m.n && t.n!=null) ? t.base+":"+t.n : t.base);
+    }
+    return out;
+  }
+  function effectChip(e){ var t=splitTag(e), m=EFFECT_META[t.base]; if(!m) return null;
+    return m.g+" "+m.l+((m.n && t.n!=null) ? " "+t.n : ""); }
+
+  var FACE = {
+    "+0":["+0","neu"], "+1":["+1","pos"], "+2":["+2","pos"],
+    "-1":["-1","neg"], "-2":["-2","neg"],
+    "x2":["x2","crit"], "null":["NULL","null"],
+    "bless":["BLESS ✦","crit"], "curse":["CURSE ☠","curse"]
+  };
+
+  // ---------- card resolution ----------
+  function resolveRef(ch, ref){
+    if(isStd(ref)) return {kind:"std", value:ref, rolling:false, effects:[], face:FACE[ref]};
+    if(isVol(ref)) return {kind:"vol", ref:ref, value:(ref==="bless"?"x2":"null"), rolling:false, effects:[], face:FACE[ref]};
+    for(var i=0;i<ch.cards.length;i++){ if(ch.cards[i].id===ref){ var d=ch.cards[i];
+      return {kind:"custom", id:ref, value:d.value, rolling:!!d.rolling, effects:d.effects.slice(), face:faceForValue(d.value)}; } }
+    return null;
+  }
+  function viewLite(v){ return { value:v.value, rolling:v.rolling, effects:v.effects.slice(), kind:v.kind, face:v.face }; }
+
+  // ---------- deck ops ----------
+  function rebuildDeck(ch){
+    var vol = ch.deck.filter(isVol);
+    ch.deck = shuffle(expand(ch.build).concat(expandCustom(ch.cards)).concat(vol));
+    ch.discard = []; ch.reshuffle = false; ch._lastResult=null;
+    ch.bless = countVol(ch.deck,"bless"); ch.curse = countVol(ch.deck,"curse");
+  }
+  function reshuffleDeck(ch){
+    ch.deck = shuffle(ch.discard.concat(ch.deck));
+    ch.discard = []; ch.reshuffle = false; ch._lastResult=null;
+  }
+  function addVolatile(ch, tok){
+    if((ch[tok]||0) >= TOKEN_CAP) return;
+    ch.deck.push(tok); shuffle(ch.deck);
+    ch[tok] = countVol(ch.deck, tok);
+  }
+  function setBuildCount(ch, V, n){
+    n = clamp(toInt(n), BOUNDS[V][0], BOUNDS[V][1]);
+    if(n === ch.build[V]) return false;
+    if(sumStd(ch.build) - ch.build[V] + n < 1) return false; // std must keep a non-rolling terminator
+    ch.build[V] = n; rebuildDeck(ch); return true;
+  }
+  function resetBuild(ch){ ch.build = cloneBuild(BASE_TALLY); rebuildDeck(ch); }
+
+  var idSeq = 0;
+  function uid(){ return "c_"+Date.now().toString(36)+"_"+(idSeq++).toString(36); }
+  function cardId(){ return "k_"+Date.now().toString(36)+"_"+(idSeq++).toString(36); }
+
+  function addCard(ch, spec){
+    var value = normValue(spec.value);
+    var rolling = (value==="x2"||value==="null") ? false : !!spec.rolling;
+    ch.cards.push({ id:cardId(), value:value, rolling:rolling,
+      effects:dedupeEffects(spec.effects), count:clamp(toInt(spec.count),1,CUSTOM_CAP) });
+    rebuildDeck(ch);
+  }
+  function editCard(ch, id, patch){
+    var d=null; for(var i=0;i<ch.cards.length;i++){ if(ch.cards[i].id===id){ d=ch.cards[i]; break; } }
+    if(!d) return;
+    var rebuild=false;
+    if(patch.value!=null){ d.value=normValue(patch.value); if(d.value==="x2"||d.value==="null") d.rolling=false; }
+    if(patch.rolling!=null) d.rolling=(d.value==="x2"||d.value==="null")?false:!!patch.rolling;
+    if(patch.effects!=null) d.effects=dedupeEffects(patch.effects);
+    if(patch.count!=null){ var n=clamp(toInt(patch.count),1,CUSTOM_CAP); if(n!==d.count){ d.count=n; rebuild=true; } }
+    if(rebuild) rebuildDeck(ch);
+  }
+  function removeCard(ch, id){ ch.cards = ch.cards.filter(function(c){ return c.id!==id; }); rebuildDeck(ch); }
+
+  // ---------- draw / resolution ----------
+  function drawOne(ch){
+    if(ch.deck.length===0){ var keep=ch.reshuffle; reshuffleDeck(ch); ch.reshuffle=keep; } // auto-reshuffle must NOT clear the round-end flag
+    var ref=ch.deck.pop(); var v=resolveRef(ch,ref);
+    if(!v) return drawOne(ch);                         // dangling id (coerce prevents); skip
+    if(v.kind==="vol"){ ch[ref]=Math.max(0,(ch[ref]||0)-1); }   // single-use; no discard, no reshuffle
+    else {
+      ch.discard.push(ref);
+      var k=kindVal(v.value);
+      if(!v.rolling && (k.mode==="x2"||k.mode==="null")) ch.reshuffle=true;
+    }
+    return v;
+  }
+  function drawChain(ch){ var views=[],g=0,v; do{ v=drawOne(ch); views.push(v); g++; } while(v.rolling && g<CHAIN_GUARD); return views; }
+  function branchKey(views, ignoreRolling){
+    var sum=0, hasX2=false, hasNull=false;
+    for(var i=0;i<views.length;i++){ var v=views[i]; if(ignoreRolling && v.rolling) continue;
+      var k=kindVal(v.value); if(k.mode==="x2") hasX2=true; else if(k.mode==="null") hasNull=true; else sum+=k.n; }
+    return { tier: hasNull?0:(hasX2?2:1), sum:sum };
+  }
+  function cmp(a,b){ return a.tier!==b.tier ? a.tier-b.tier : a.sum-b.sum; }
+  function summarize(ch, mode, views, used, note){
+    var sum=0, mult=null, eff=[], rolled=false;
+    for(var i=0;i<views.length;i++){ if(!used[i]) continue; var v=views[i]; if(v.rolling) rolled=true;
+      var k=kindVal(v.value);
+      if(k.mode==="x2"){ mult=(mult==="null"?"null":"x2"); }
+      else if(k.mode==="null"){ mult="null"; }
+      else sum += k.n;
+      for(var e=0;e<v.effects.length;e++){ if(eff.indexOf(v.effects[e])<0) eff.push(v.effects[e]); }
+    }
+    ch._lastResult = { mode:mode, cards:views.map(viewLite), used:used.slice(),
+      sum:sum, mult:mult, effects:eff, rolled:rolled, reshuffleTriggered:!!ch.reshuffle, note:note||"" };
+  }
+  function drawNormal(ch){
+    var views=drawChain(ch); var used=views.map(function(){return true;});
+    summarize(ch,"normal",views,used, views.length>1 ? ("Rolling ×"+(views.length-1)) : "");
+  }
+  function drawAdvantage(ch){
+    var A=drawOne(ch), B=drawOne(ch); var ra=A.rolling, rb=B.rolling, views, used;
+    if(!ra && !rb){
+      var better = cmp(branchKey([A],false), branchKey([B],false)) >= 0; // tie -> A
+      views=[A,B]; used = better?[true,false]:[false,true];
+    } else if(ra!==rb){
+      views=[A,B]; used=[true,true];                   // apply both (non-rolling one terminates)
+    } else {
+      views=[A,B]; while(views[views.length-1].rolling && views.length<CHAIN_GUARD) views.push(drawOne(ch));
+      used=views.map(function(){return true;});
+    }
+    var uc=0; for(var i=0;i<used.length;i++) if(used[i]) uc++;
+    summarize(ch,"advantage",views,used, uc>1?"Advantage — combined":"Advantage — better card");
+  }
+  function drawDisadvantage(ch){
+    var A=drawOne(ch), B=drawOne(ch); var ra=A.rolling, rb=B.rolling, views, used;
+    if(!ra && !rb){
+      var worse = cmp(branchKey([A],false), branchKey([B],false)) <= 0; // tie -> A
+      views=[A,B]; used = worse?[true,false]:[false,true];
+    } else if(ra!==rb){
+      views=[A,B]; used = ra?[false,true]:[true,false];        // use the non-rolling card only
+    } else {
+      views=[A,B]; while(views[views.length-1].rolling && views.length<CHAIN_GUARD) views.push(drawOne(ch));
+      used=views.map(function(_,i){ return i===views.length-1; });
+    }
+    summarize(ch,"disadvantage",views,used,"Disadvantage — rolling ignored");
+  }
+  function finalValue(res){ return res.mult==="null" ? 0 : res.mult==="x2" ? res.sum*2 : res.sum; }
+  function finalText(res){
+    if(res.mult==="null") return "NULL (×0)";
+    if(res.mult==="x2") return res.sum!==0 ? ((res.sum>=0?"+":"")+res.sum+" ×2 = "+(res.sum*2)) : "×2";
+    return (res.sum>=0?"+":"")+res.sum;
+  }
+
+  // ---------- state ----------
+  var STATE = { v:1, chars:[] };
+
+  function newChar(){
+    var build = cloneBuild(BASE_TALLY);
+    return { id:uid(), name:"Hero", hp:10, maxHp:10, xp:0,
+      build:build, cards:[], deck:shuffle(expand(build)), discard:[], reshuffle:false,
+      bless:0, curse:0, _lastResult:null };
+  }
+  function sanitizeBuild(b){
+    if(!b || typeof b!=="object") return null;
+    for(var i=0;i<STD.length;i++){ var t=typeof b[STD[i]]; if(t!=="number"&&t!=="string") return null; }
+    var out=clampBuild(b); return sumStd(out)>=1 ? out : null;
+  }
+  function sanitizeCards(arr){
+    if(!Array.isArray(arr)) return [];
+    var out=[], seen={};
+    for(var i=0;i<arr.length;i++){ var c=arr[i]; if(!c||typeof c!=="object"||c.value==null) continue;
+      var value=normValue(c.value);
+      var rolling=(value==="x2"||value==="null")?false:!!c.rolling;
+      var id=(typeof c.id==="string" && c.id.indexOf("k_")===0 && !seen[c.id]) ? c.id : cardId();
+      seen[id]=1;
+      out.push({ id:id, value:value, rolling:rolling, effects:dedupeEffects(c.effects), count:clamp(toInt(c.count),1,CUSTOM_CAP) });
+    }
+    return out;
+  }
+  function coerceChar(c){
+    c = c||{};
+    var maxHp = Math.max(1, toInt(c.maxHp!=null?c.maxHp:10));
+    var hp = clamp(toInt(c.hp!=null?c.hp:maxHp), 0, maxHp);
+    var xp = Math.max(0, toInt(c.xp));
+    var cards = sanitizeCards(c.cards);
+    var valid={}; cards.forEach(function(d){ valid[d.id]=1; });
+    var deck = Array.isArray(c.deck) ? c.deck.filter(function(r){ return isStd(r)||isVol(r)||valid[r]===1; }) : [];
+    var discard = Array.isArray(c.discard) ? c.discard.filter(function(r){ return isStd(r)||valid[r]===1; }) : []; // no volatile in discard
+    var reshuffle = !!c.reshuffle;
+    var build = sanitizeBuild(c.build);
+    if(!build){ build = clampBuild(tallyStdFull(deck.concat(discard))); if(sumStd(build)<1) build = cloneBuild(BASE_TALLY); }
+    ["bless","curse"].forEach(function(tok){ var n=countVol(deck,tok); while(n>TOKEN_CAP){ deck.splice(deck.lastIndexOf(tok),1); n--; } });
+    var stdOK = sameTally(tallyStdFull(deck.concat(discard)), build);
+    var customOK = true;
+    for(var i=0;i<cards.length;i++){ var d=cards[i]; if(countRef(deck,d.id)+countRef(discard,d.id)!==d.count){ customOK=false; break; } }
+    if(!stdOK || !customOK){
+      var vol=deck.filter(isVol);
+      deck = shuffle(expand(build).concat(expandCustom(cards)).concat(vol));
+      discard=[]; reshuffle=false;
+    }
+    return { id:(typeof c.id==="string"&&c.id)||uid(), name:(typeof c.name==="string"?c.name:"Hero"),
+      hp:hp, maxHp:maxHp, xp:xp, build:build, cards:cards, deck:deck, discard:discard,
+      reshuffle:reshuffle, bless:Math.min(countVol(deck,"bless"),TOKEN_CAP), curse:Math.min(countVol(deck,"curse"),TOKEN_CAP),
+      _lastResult:null };
+  }
+  function load(){
+    var raw=null;
+    try{ raw = localStorage.getItem(KEY); }catch(e){ raw=null; }
+    if(raw==null){ STATE={ v:1, chars:[newChar()] }; return; }
+    try{
+      var data = JSON.parse(raw);
+      var arr = (data && Array.isArray(data.chars)) ? data.chars : [];
+      STATE = { v:1, chars:arr.map(coerceChar) };
+    }catch(e){
+      try{ localStorage.setItem(KEY+".corrupt."+Date.now(), raw); }catch(_){}
+      STATE = { v:1, chars:[newChar()] };
+    }
+  }
+  var saveTimer=null;
+  function save(){ if(saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ try{ localStorage.setItem(KEY, JSON.stringify(STATE)); }catch(e){} }, 150); }
+  function flush(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer=null; }
+    try{ localStorage.setItem(KEY, JSON.stringify(STATE)); }catch(e){} }
+
+  // ---------- DOM helpers ----------
+  var listEl = document.getElementById("list");
+  function el(tag,cls,txt){ var n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
+  function num(val,cls,aria){ var n=document.createElement("input");
+    n.type="text"; n.inputMode="numeric"; n.className="num"+(cls?" "+cls:"");
+    n.value=val; n.setAttribute("aria-label",aria);
+    n.setAttribute("name",aria.toLowerCase().replace(/[^\w]+/g,"-")); n.autocomplete="off"; return n; }
+  function btn(cls,txt,aria){ var b=el("button",cls,txt); b.setAttribute("aria-label",aria||txt); return b; }
+
+  function renderAll(){
+    listEl.textContent="";
+    if(!STATE.chars.length){ listEl.appendChild(el("div","empty","No characters. Tap “+ Character”.")); return; }
+    STATE.chars.forEach(function(ch){ listEl.appendChild(buildCard(ch)); });
+  }
+
+  function buildCard(ch){
+    var card = el("div","card"); card.dataset.id=ch.id;
+    var drawMode="normal";           // transient per-character
+
+    // -- header --
+    var hd = el("div","hd");
+    var name = el("input","name"); name.type="text"; name.value=ch.name;
+    name.maxLength=24; name.placeholder="Name"; name.setAttribute("aria-label","Character name");
+    name.setAttribute("name","character-name"); name.autocomplete="off";
+    name.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); name.blur(); } });
+    name.addEventListener("change",function(){ ch.name=name.value.replace(/[\r\n]+/g," ").trim().slice(0,24); name.value=ch.name; save(); });
+    var trash = btn("btn trash","🗑","Delete character"); var armTimer=null;
+    trash.addEventListener("click",function(){
+      if(trash.classList.contains("armed")){ if(armTimer) clearTimeout(armTimer);
+        STATE.chars=STATE.chars.filter(function(c){return c.id!==ch.id;}); save(); card.remove(); if(!STATE.chars.length) renderAll(); }
+      else { trash.classList.add("armed"); trash.textContent="Delete?"; armTimer=setTimeout(function(){ trash.classList.remove("armed"); trash.textContent="🗑"; },3000); }
+    });
+    hd.appendChild(name); hd.appendChild(trash);
+
+    // -- HP --
+    var hpS = el("div","sect"); hpS.appendChild(el("div","lbl","Hit Points"));
+    var hpRow = el("div","row");
+    var hpMinus = btn("btn step","−","Damage 1"), hpPlus = btn("btn step","+","Heal 1");
+    var ro = el("div","readout"); var cur=num(ch.hp,null,"Current HP"), max=num(ch.maxHp,"sm","Max HP");
+    ro.appendChild(cur); ro.appendChild(el("span","slash","/")); ro.appendChild(max);
+    hpRow.appendChild(hpMinus); hpRow.appendChild(ro); hpRow.appendChild(hpPlus);
+    var hpFast = el("div","fastrow");
+    var hpM5=btn("btn step sm","−5","Damage 5"), hpP5=btn("btn step sm","+5","Heal 5"), hpFull=btn("btn mini","♥ Full","Heal to full");
+    hpFast.appendChild(hpM5); hpFast.appendChild(hpP5); hpFast.appendChild(hpFull);
+    var hpBar=el("div","bar"); var hpFill=el("i"); hpBar.appendChild(hpFill);
+    hpS.appendChild(hpRow); hpS.appendChild(hpFast); hpS.appendChild(hpBar);
+    function setHp(n){ ch.hp=clamp(toInt(n),0,ch.maxHp); }
+    function setMax(n){ ch.maxHp=Math.max(1,toInt(n)); ch.hp=Math.min(ch.hp,ch.maxHp); }
+    function stepHp(d){ setHp(ch.hp+d); save(); update(); }
+    hold(hpMinus,function(){stepHp(-1);}); hold(hpPlus,function(){stepHp(1);});
+    hpM5.addEventListener("click",function(){stepHp(-5);}); hpP5.addEventListener("click",function(){stepHp(5);});
+    hpFull.addEventListener("click",function(){ ch.hp=ch.maxHp; save(); update(); });
+    commitNum(cur,function(){return ch.hp;},function(n){setHp(n);save();update();});
+    commitNum(max,function(){return ch.maxHp;},function(n){setMax(n);save();update();});
+
+    // -- XP (scenario only) --
+    var xpS = el("div","sect"); xpS.appendChild(el("div","lbl","Experience (scenario)"));
+    var xpRow = el("div","row");
+    var xpMinus=btn("btn step","−","Lose 1 XP"), xpPlus=btn("btn step","+","Gain 1 XP");
+    var xpRo=el("div","readout"); var xpIn=num(ch.xp,null,"Scenario XP");
+    xpRo.appendChild(xpIn); xpRo.appendChild(el("span","slash","XP"));
+    xpRow.appendChild(xpMinus); xpRow.appendChild(xpRo); xpRow.appendChild(xpPlus);
+    var xpFast=el("div","fastrow"); var xpReset=btn("btn mini","↺ Reset","Reset XP to 0"); xpFast.appendChild(xpReset);
+    xpS.appendChild(xpRow); xpS.appendChild(xpFast);
+    function setXp(n){ ch.xp=Math.max(0,toInt(n)); }
+    function stepXp(d){ setXp(ch.xp+d); save(); update(); }
+    hold(xpMinus,function(){stepXp(-1);}); hold(xpPlus,function(){stepXp(1);});
+    xpReset.addEventListener("click",function(){ ch.xp=0; save(); update(); });
+    commitNum(xpIn,function(){return ch.xp;},function(n){setXp(n);save();update();});
+
+    // -- Deck --
+    var dS = el("div","sect deck");
+    var lblrow = el("div","lblrow"); lblrow.appendChild(el("div","lbl","Attack Modifier Deck"));
+    var editToggle = btn("edittoggle","⚙ Edit","Edit deck composition"); editToggle.setAttribute("aria-expanded","false");
+    lblrow.appendChild(editToggle);
+
+    var result = el("div","result"); result.setAttribute("role","status"); // role=status implies a scoped polite live region
+    var counts = el("div","counts");
+    var banner = el("div","banner"); banner.setAttribute("role","status"); banner.textContent="↺ Reshuffle before next round";
+
+    var seg = el("div","seg"); var segBtns={};
+    [["advantage","Adv","adv"],["normal","Normal",""],["disadvantage","Dis","dis"]].forEach(function(m){
+      var b=btn("seg-btn"+(m[2]?" "+m[2]:""), m[1], "Draw mode "+m[1]);
+      b.addEventListener("click",function(){ drawMode=m[0]; update(); });
+      segBtns[m[0]]=b; seg.appendChild(b);
+    });
+    var dbtns = el("div","deckbtns");
+    var drawB=btn("btn draw","Draw","Draw"); var shufB=btn("btn shuffle","Shuffle","Shuffle deck");
+    dbtns.appendChild(drawB); dbtns.appendChild(shufB);
+    var tokrow = el("div","tokrow");
+    var blessBtn=btn("btn tokbtn","✦ Bless","Add a bless card"), curseBtn=btn("btn tokbtn","☠ Curse","Add a curse card");
+    tokrow.appendChild(blessBtn); tokrow.appendChild(curseBtn);
+
+    drawB.addEventListener("click",function(){
+      if(drawMode==="advantage") drawAdvantage(ch);
+      else if(drawMode==="disadvantage") drawDisadvantage(ch);
+      else drawNormal(ch);
+      save(); update();
+    });
+    shufB.addEventListener("click",function(){ reshuffleDeck(ch); save(); update(); });
+    blessBtn.addEventListener("click",function(){ addVolatile(ch,"bless"); save(); update(); });
+    curseBtn.addEventListener("click",function(){ addVolatile(ch,"curse"); save(); update(); });
+
+    // -- editor --
+    var editor = el("div","editor");
+    editor.appendChild(el("div","lbl","Standard cards"));
+    var countInputs={};
+    STD.forEach(function(V){
+      var erow=el("div","erow"); erow.appendChild(el("span","chip",FACE[V][0]));
+      var m=btn("btn step sm","−","Remove one "+V); var inp=num(ch.build[V],"sm",V+" card count"); var p=btn("btn step sm","+","Add one "+V);
+      erow.appendChild(m); erow.appendChild(inp); erow.appendChild(p);
+      countInputs[V]=inp; editor.appendChild(erow);
+      hold(m,function(){ setBuildCount(ch,V,(ch.build[V]||0)-1); save(); update(); });
+      hold(p,function(){ setBuildCount(ch,V,(ch.build[V]||0)+1); save(); update(); });
+      commitNum(inp,function(){return ch.build[V];},function(n){ setBuildCount(ch,V,n); save(); update(); });
+    });
+    var stdFtr=el("div","ftr"); var total=el("div","cap"); var resetLink=btn("edittoggle","↺ Reset standard","Reset standard cards to base");
+    stdFtr.appendChild(total); stdFtr.appendChild(resetLink); editor.appendChild(stdFtr);
+    resetLink.addEventListener("click",function(){ resetBuild(ch); save(); update(); });
+
+    editor.appendChild(el("div","lbl","Custom cards"));
+    var customList = el("div","customlist"); editor.appendChild(customList);
+
+    // builder (add / edit form) -------------------------------------------
+    var builder = el("div","builder"); editor.appendChild(builder);
+    editor.appendChild(el("div","cap","Editing rebuilds & shuffles the deck."));
+
+    var editingId=null;
+    var bs;
+    function freshBS(){ return { special:null, n:1, rolling:false, count:1, effects:{} }; }
+    bs = freshBS();
+    function bsValue(){ return bs.special ? bs.special : ((bs.n>=0?"+":"")+bs.n); }
+    function bsEffects(){ return Object.keys(bs.effects).map(function(k){ var n=bs.effects[k]; return (EFFECT_META[k].n && n!=null)? k+":"+n : k; }); }
+    function loadBS(d){
+      var spec=(d.value==="x2"||d.value==="null");
+      bs={ special:spec?d.value:null, n:spec?1:toInt(d.value), rolling:!!d.rolling, count:d.count, effects:{} };
+      d.effects.forEach(function(e){ var t=splitTag(e); bs.effects[t.base]=t.n; });
+    }
+
+    function renderBuilder(){
+      builder.textContent="";
+      builder.appendChild(el("div","cap", editingId?"Edit card":"New custom card"));
+      var face=faceForValue(bsValue());
+
+      // live preview card
+      builder.appendChild(el("div","blbl","Preview"));
+      var prev=el("div","bprev");
+      prev.appendChild(el("div","bprev-val mval "+face[1], face[0]));
+      if(bs.rolling) prev.appendChild(el("div","roll","↻ rolling — draw another"));
+      var pe=bsEffects();
+      if(pe.length){ var pefx=el("div","efx"); pe.forEach(function(e){ var txt=effectChip(e); if(txt) pefx.appendChild(el("span","tag",txt)); }); prev.appendChild(pefx); }
+      builder.appendChild(prev);
+
+      // value: prominent signed stepper ( − goes negative ) + separate special pills
+      builder.appendChild(el("div","blbl","Value"));
+      var vctl=el("div","valctl");
+      var dec=btn("btn vstep","−","Decrease value");
+      var vnum=el("div","vnum mval "+face[1], face[0]);
+      var inc=btn("btn vstep","+","Increase value");
+      if(bs.special){ dec.disabled=true; inc.disabled=true; }
+      hold(dec,function(){ if(bs.special) return; bs.n=clamp(bs.n-1,-VAL_MAX,VAL_MAX); renderBuilder(); });
+      hold(inc,function(){ if(bs.special) return; bs.n=clamp(bs.n+1,-VAL_MAX,VAL_MAX); renderBuilder(); });
+      vctl.appendChild(dec); vctl.appendChild(vnum); vctl.appendChild(inc);
+      builder.appendChild(vctl);
+      var vsp=el("div","vspecial");
+      var x2p=btn("vpill x2"+(bs.special==="x2"?" on":""),"×2","Set value ×2");
+      var nlp=btn("vpill nul"+(bs.special==="null"?" on":""),"NULL","Set value NULL (miss)");
+      x2p.addEventListener("click",function(){ bs.special=(bs.special==="x2")?null:"x2"; if(bs.special) bs.rolling=false; renderBuilder(); });
+      nlp.addEventListener("click",function(){ bs.special=(bs.special==="null")?null:"null"; if(bs.special) bs.rolling=false; renderBuilder(); });
+      vsp.appendChild(x2p); vsp.appendChild(nlp);
+      builder.appendChild(vsp);
+      // rolling toggle
+      var roll=btn("toggle"+(bs.rolling?" on":""),"↻ Rolling — draw another","Toggle rolling"); roll.setAttribute("aria-pressed",bs.rolling?"true":"false");
+      if(bs.special){ roll.disabled=true; }
+      roll.addEventListener("click",function(){ if(bs.special) return; bs.rolling=!bs.rolling; renderBuilder(); });
+      builder.appendChild(roll);
+      // effect palette
+      var pal=el("div","palette");
+      EFFECT_GROUPS.forEach(function(g){
+        pal.appendChild(el("div","pgrp",g[0]));
+        g[1].forEach(function(tag){
+          var meta=EFFECT_META[tag]; var on=bs.effects.hasOwnProperty(tag);
+          var chip=el("div","pchip"+(on?" on":""), meta.g+" "+meta.l);   // div (not button) so N-steppers can nest legally
+          chip.setAttribute("role","button"); chip.setAttribute("tabindex","0");
+          chip.setAttribute("aria-pressed",on?"true":"false"); chip.setAttribute("aria-label",(on?"Remove ":"Add ")+meta.l);
+          var toggle=function(){ if(bs.effects.hasOwnProperty(tag)) delete bs.effects[tag]; else bs.effects[tag]= meta.n?1:null; renderBuilder(); };
+          chip.addEventListener("click", toggle);
+          chip.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } });
+          if(on && meta.n){
+            var ns=el("span","nstep"); var d=el("button",null,"−"); var nv=el("b",null,String(bs.effects[tag]||0)); var u=el("button",null,"+");
+            d.setAttribute("aria-label","Decrease "+meta.l); u.setAttribute("aria-label","Increase "+meta.l);
+            d.addEventListener("click",function(ev){ ev.stopPropagation(); bs.effects[tag]=clamp((bs.effects[tag]||0)-1,0,VAL_MAX); renderBuilder(); });
+            u.addEventListener("click",function(ev){ ev.stopPropagation(); bs.effects[tag]=clamp((bs.effects[tag]||0)+1,0,VAL_MAX); renderBuilder(); });
+            ns.appendChild(d); ns.appendChild(nv); ns.appendChild(u); chip.appendChild(ns);
+          }
+          pal.appendChild(chip);
+        });
+      });
+      builder.appendChild(pal);
+      // count
+      var crow=el("div","vrow"); crow.appendChild(el("span","cap","Copies"));
+      var cd=btn("btn step sm","−","Fewer copies"); var cspan=el("span","cnt",String(bs.count)); var cu=btn("btn step sm","+","More copies");
+      hold(cd,function(){ bs.count=clamp(bs.count-1,1,CUSTOM_CAP); renderBuilder(); });
+      hold(cu,function(){ bs.count=clamp(bs.count+1,1,CUSTOM_CAP); renderBuilder(); });
+      crow.appendChild(cd); crow.appendChild(cspan); crow.appendChild(cu); builder.appendChild(crow);
+      // actions
+      var act=el("div","bactions");
+      var primary=btn("btn addbtn", editingId?"Save":"＋ Add card", editingId?"Save card":"Add card");
+      primary.addEventListener("click",function(){
+        var spec={ value:bsValue(), rolling:bs.rolling, effects:bsEffects(), count:bs.count };
+        if(editingId){ editCard(ch, editingId, spec); editingId=null; } else { addCard(ch, spec); }
+        bs=freshBS(); renderCustomList(); renderBuilder(); save(); update();
+      });
+      act.appendChild(primary);
+      if(editingId){ var cancel=btn("btn","Cancel","Cancel edit");
+        cancel.addEventListener("click",function(){ editingId=null; bs=freshBS(); renderBuilder(); }); act.appendChild(cancel); }
+      builder.appendChild(act);
+    }
+
+    function renderCustomList(){
+      customList.textContent="";
+      if(!ch.cards.length){ customList.appendChild(el("div","cap","No custom cards yet.")); return; }
+      ch.cards.forEach(function(d){
+        var crow=el("div","crow");
+        var f=faceForValue(d.value); var cv=el("span","cval mval "+f[1], f[0]); crow.appendChild(cv);
+        var meta=el("div","cmeta");
+        if(d.rolling) meta.appendChild(el("span","roll","↻ roll"));
+        d.effects.forEach(function(e){ var t=splitTag(e), m=EFFECT_META[t.base]; if(m) meta.appendChild(el("span","mi", m.g+(m.n&&t.n!=null?t.n:""))); });
+        crow.appendChild(meta);
+        var cm=btn("btn step sm","−","Fewer"); var cn=el("span","cnt","×"+d.count); var cp=btn("btn step sm","+","More");
+        (function(id){
+          hold(cm,function(){ editCard(ch,id,{count:(findCard(id).count)-1}); renderCustomList(); save(); update(); });
+          hold(cp,function(){ editCard(ch,id,{count:(findCard(id).count)+1}); renderCustomList(); save(); update(); });
+        })(d.id);
+        crow.appendChild(cm); crow.appendChild(cn); crow.appendChild(cp);
+        var ed=btn("btn step sm","✎","Edit card"); ed.addEventListener("click",function(){ editingId=d.id; loadBS(d); renderBuilder(); builder.scrollIntoView&&builder.scrollIntoView({block:"nearest"}); });
+        crow.appendChild(ed);
+        var del=btn("btn trash","🗑","Remove card"); var dt=null;
+        del.addEventListener("click",function(){
+          if(del.classList.contains("armed")){ if(dt)clearTimeout(dt); if(editingId===d.id){editingId=null;bs=freshBS();renderBuilder();} removeCard(ch,d.id); renderCustomList(); save(); update(); }
+          else { del.classList.add("armed"); del.textContent="✕"; dt=setTimeout(function(){ del.classList.remove("armed"); del.textContent="🗑"; },3000); }
+        });
+        crow.appendChild(del);
+        customList.appendChild(crow);
+      });
+    }
+    function findCard(id){ for(var i=0;i<ch.cards.length;i++) if(ch.cards[i].id===id) return ch.cards[i]; return {count:1}; }
+
+    editToggle.addEventListener("click",function(){ var open=editor.classList.toggle("open"); editToggle.setAttribute("aria-expanded",open?"true":"false"); });
+
+    dS.appendChild(lblrow); dS.appendChild(result); dS.appendChild(counts); dS.appendChild(banner);
+    dS.appendChild(seg); dS.appendChild(dbtns); dS.appendChild(tokrow); dS.appendChild(editor);
+
+    card.appendChild(hd); card.appendChild(hpS); card.appendChild(xpS); card.appendChild(dS);
+
+    // ---- result rendering ----
+    function buildMini(v, used){
+      var m=el("div","mface"+(used?" used":" muted"));
+      var f=v.face||faceForValue(v.value);
+      m.appendChild(el("div","mval "+(f[1]||"neu"), f[0]));
+      if(v.rolling) m.appendChild(el("div","roll","↻"));
+      if(v.effects && v.effects.length){ var er=el("div","mefx");
+        v.effects.forEach(function(e){ var t=splitTag(e), me=EFFECT_META[t.base]; if(me) er.appendChild(el("span","mi", me.g+(me.n&&t.n!=null?t.n:""))); });
+        m.appendChild(er); }
+      if(!used) m.appendChild(el("div","cap","ignored"));
+      return m;
+    }
+    function renderResult(){
+      result.textContent="";
+      var res=ch._lastResult;
+      if(!res){
+        var shown = ch.discard.length ? ch.discard[ch.discard.length-1] : null;
+        if(shown){ var v=resolveRef(ch,shown); var strip=el("div","chain"); if(v) strip.appendChild(buildMini(viewLite(v),true)); result.appendChild(strip); }
+        else { var em=el("div","mface big"); em.appendChild(el("div","cap","Draw a card")); result.appendChild(em); }
+        return;
+      }
+      if(res.mode!=="normal") result.appendChild(el("div","modebadge "+(res.mode==="advantage"?"adv":"dis"), res.mode==="advantage"?"ADV":"DIS"));
+      var chain=el("div","chain");
+      res.cards.forEach(function(v,i){ chain.appendChild(buildMini(v,res.used[i])); });
+      result.appendChild(chain);
+      result.appendChild(el("div","resultline","Result: "+finalText(res)));
+      if(res.note) result.appendChild(el("div","cap",res.note));
+      if(res.effects && res.effects.length){ var efx=el("div","efx");
+        res.effects.forEach(function(e){ var txt=effectChip(e); if(txt) efx.appendChild(el("span","tag",txt)); });
+        result.appendChild(efx); }
+    }
+
+    // ---- update-in-place ----
+    function update(){
+      cur.value=ch.hp; max.value=ch.maxHp;
+      var ratio=ch.maxHp>0?ch.hp/ch.maxHp:0;
+      hpFill.style.width=Math.round(clamp(ratio,0,1)*100)+"%";
+      hpFill.style.background=ch.hp===0?"var(--bad)":ratio>0.5?"var(--good)":ratio>0.25?"var(--warn)":"var(--bad)";
+      hpFull.disabled=(ch.hp===ch.maxHp);
+      xpIn.value=ch.xp; xpReset.disabled=(ch.xp===0);
+      renderResult();
+      var customN=0; ch.cards.forEach(function(d){ customN+=d.count; });
+      counts.textContent="Deck "+ch.deck.length+" · Discard "+ch.discard.length
+        + (ch.bless?" · ✦"+ch.bless:"") + (ch.curse?" · ☠"+ch.curse:"") + (ch.cards.length?" · custom "+customN:"");
+      banner.classList.toggle("on", ch.reshuffle);
+      shufB.classList.toggle("hot", ch.reshuffle);
+      Object.keys(segBtns).forEach(function(k){ var on=k===drawMode; segBtns[k].classList.toggle("on",on); segBtns[k].setAttribute("aria-pressed",on?"true":"false"); });
+      blessBtn.textContent="✦ Bless "+ch.bless; blessBtn.disabled=ch.bless>=TOKEN_CAP;
+      curseBtn.textContent="☠ Curse "+ch.curse; curseBtn.disabled=ch.curse>=TOKEN_CAP;
+      for(var i=0;i<STD.length;i++) countInputs[STD[i]].value=ch.build[STD[i]];
+      var sum=sumStd(ch.build), diff=sum-BASE_SIZE;
+      total.textContent="Standard: "+sum+(diff?" ("+(diff>0?"+":"")+diff+" vs base)":"");
+    }
+    renderCustomList(); renderBuilder(); update();
+    return card;
+  }
+
+  function commitNum(input, getCur, setVal){
+    function commit(){ var raw=input.value.trim(); var n=parseInt(raw,10); if(raw===""||isNaN(n)){ input.value=getCur(); return; } setVal(n); }
+    input.addEventListener("change", commit);
+    input.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); input.blur(); } });
+    input.addEventListener("focus", function(){ input.select(); });
+  }
+  var activeHoldStop=null;   // the currently-held stepper's stop(); cleared on any global pointerup
+  function hold(b, fn){
+    var t=null, r=null;
+    function stop(){ if(t)clearTimeout(t); if(r)clearInterval(r); t=r=null; if(activeHoldStop===stop) activeHoldStop=null; }
+    function start(e){ if(b.disabled) return; if(e.button!=null && e.button!==0) return;
+      if(activeHoldStop) activeHoldStop();              // never leave a prior hold running
+      activeHoldStop=stop;
+      fn(); t=setTimeout(function(){ r=setInterval(function(){ if(b.disabled){ stop(); return; } fn(); },90); },420); }
+    b.addEventListener("pointerdown", start); b.addEventListener("pointerup", stop);
+    b.addEventListener("pointerleave", stop); b.addEventListener("pointercancel", stop);
+    b.addEventListener("keydown", function(e){ if(b.disabled) return; if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){ e.preventDefault(); fn(); } });
+    b.addEventListener("click", function(e){ e.preventDefault(); });
+  }
+
+  // ---------- rules lookup ----------
+  var RULES=null, rulesLoading=false;
+  var ovEl, searchEl, bodyEl, resultsEl, viewEl, pvImg, pvPos, pvPrev, pvNext, pvScroll;
+  var curPage=1;
+  function pad4(n){ n=String(n); while(n.length<4) n="0"+n; return n; }
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){ return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"; }); }
+
+  function buildRulesOverlay(){
+    ovEl=el("div","rules-ov"); ovEl.setAttribute("role","dialog"); ovEl.setAttribute("aria-modal","true");
+    ovEl.setAttribute("aria-label","Rulebook lookup");
+    var bar=el("div","rules-bar");
+    searchEl=document.createElement("input"); searchEl.className="rules-search"; searchEl.type="search";
+    searchEl.placeholder="Search rules — keyword or phrase"; searchEl.setAttribute("aria-label","Search rules");
+    searchEl.autocomplete="off"; searchEl.setAttribute("name","rules-search");
+    var xb=btn("btn rules-x","✕","Close rulebook");
+    bar.appendChild(searchEl); bar.appendChild(xb);
+
+    bodyEl=el("div","rules-body"); resultsEl=el("div","rules-results"); bodyEl.appendChild(resultsEl);
+
+    viewEl=el("div","rules-view");
+    var nav=el("div","pv-nav");
+    var back=btn("pv-back","‹ Results","Back to results");
+    pvPrev=btn("pv-step","‹","Previous page"); pvPos=el("div","pv-pos",""); pvNext=btn("pv-step","›","Next page");
+    var zoom=btn("pv-step","⤢","Toggle zoom");
+    nav.appendChild(back); nav.appendChild(pvPrev); nav.appendChild(pvPos); nav.appendChild(pvNext); nav.appendChild(zoom);
+    pvScroll=el("div","pv-scroll"); pvImg=document.createElement("img"); pvImg.className="pv-img";
+    pvImg.alt="Rulebook page"; pvImg.decoding="async"; pvScroll.appendChild(pvImg);
+    viewEl.appendChild(nav); viewEl.appendChild(pvScroll);
+
+    ovEl.appendChild(bar); ovEl.appendChild(bodyEl); ovEl.appendChild(viewEl);
+    document.body.appendChild(ovEl);
+
+    xb.addEventListener("click", closeRules);
+    back.addEventListener("click", showResults);
+    pvPrev.addEventListener("click", function(){ gotoPage(curPage-1); });
+    pvNext.addEventListener("click", function(){ gotoPage(curPage+1); });
+    zoom.addEventListener("click", function(){ pvImg.classList.toggle("zoom"); });
+    var t=null;
+    searchEl.addEventListener("input", function(){ if(t)clearTimeout(t);
+      t=setTimeout(function(){
+        if(viewEl.classList.contains("open")){ viewEl.classList.remove("open"); bodyEl.style.display=""; } // typing returns to results
+        runSearch();
+      },120);
+    });
+    ovEl.addEventListener("keydown", function(e){
+      if(e.key==="Escape"){ e.preventDefault(); if(viewEl.classList.contains("open")) showResults(); else closeRules(); }
+    });
+  }
+  function openRules(){ if(!ovEl) buildRulesOverlay(); ovEl.classList.add("open");
+    document.body.style.overflow="hidden"; showResults(); searchEl.focus(); loadRules(); }
+  function closeRules(){ if(ovEl){ ovEl.classList.remove("open"); document.body.style.overflow=""; } }
+  function showResults(){ viewEl.classList.remove("open"); bodyEl.style.display=""; runSearch(); }
+  function loadRules(){
+    if(RULES||rulesLoading) return; rulesLoading=true;
+    fetch("rules/index.json").then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(d){ RULES=d; rulesLoading=false; runSearch(); })
+      .catch(function(){ rulesLoading=false; resultsEl.textContent="";
+        resultsEl.appendChild(el("div","rules-hint","Rulebook data not found. Build & deploy the rules/ folder.")); });
+  }
+  function snippet(text, idx, len){
+    var s=Math.max(0,idx-58), e=Math.min(text.length, idx+len+92);
+    return { pre:(s>0?"… ":"")+text.slice(s,idx), mid:text.slice(idx,idx+len), post:text.slice(idx+len,e)+(e<text.length?" …":"") };
+  }
+  function searchRules(q){
+    q=q.trim().toLowerCase(); var out={curated:[],fulltext:[]};
+    if(q.length<2||!RULES) return out;
+    RULES.terms.forEach(function(t){ if(t.k.indexOf(q)>=0||q.indexOf(t.k)>=0) out.curated.push(t); });
+    out.curated.sort(function(a,b){
+      var ea=a.k===q?0:1, eb=b.k===q?0:1; if(ea!==eb) return ea-eb;
+      var sa=a.k.indexOf(q)===0?0:1, sb=b.k.indexOf(q)===0?0:1; if(sa!==sb) return sa-sb;
+      return a.k.length-b.k.length;
+    });
+    out.curated=out.curated.slice(0,10);
+    RULES.pages.forEach(function(pg){
+      var lt=pg.t.toLowerCase(), idx=lt.indexOf(q); if(idx<0) return;
+      var c=0, from=0; while((from=lt.indexOf(q,from))>=0){ c++; from+=q.length; }
+      out.fulltext.push({ p:pg.p, c:c, snip:snippet(pg.t,idx,q.length) });
+    });
+    out.fulltext.sort(function(a,b){ return b.c-a.c||a.p-b.p; });
+    out.fulltext=out.fulltext.slice(0,40);
+    return out;
+  }
+  function runSearch(){
+    if(!resultsEl) return;
+    resultsEl.textContent="";
+    if(!RULES){ resultsEl.appendChild(el("div","rules-hint", rulesLoading?"Loading rulebook…":"…")); return; }
+    var q=searchEl.value.trim();
+    if(q.length<2){ resultsEl.appendChild(el("div","rules-hint","Type a keyword (e.g. wound, loot, summon) to jump to the rulebook.")); return; }
+    var res=searchRules(q);
+    if(!res.curated.length && !res.fulltext.length){ resultsEl.appendChild(el("div","rules-hint","No matches for “"+q+"”.")); return; }
+    if(res.curated.length){
+      var g=el("div"); g.appendChild(el("div","rgrp-lbl","Jump to")); var jl=el("div","jumps");
+      res.curated.forEach(function(t){
+        var row=el("div","jrow"); row.appendChild(el("div","jterm",t.k));
+        t.pages.forEach(function(h){ var b=btn("jpage","p."+h.p,"Go to page "+h.p+" for "+t.k);
+          b.addEventListener("click",(function(p){return function(){ gotoPage(p); };})(h.p)); row.appendChild(b); });
+        jl.appendChild(row);
+      });
+      g.appendChild(jl); resultsEl.appendChild(g);
+    }
+    if(res.fulltext.length){
+      var g2=el("div"); g2.appendChild(el("div","rgrp-lbl","Mentions ("+res.fulltext.length+")"));
+      res.fulltext.forEach(function(f){
+        var b=btn("ftrow","","Page "+f.p); b.appendChild(el("div","ftpage","p."+f.p));
+        var sn=el("div","ftsnip"); sn.innerHTML=esc(f.snip.pre)+"<mark>"+esc(f.snip.mid)+"</mark>"+esc(f.snip.post);
+        b.appendChild(sn);
+        b.addEventListener("click",(function(p){return function(){ gotoPage(p); };})(f.p));
+        g2.appendChild(b);
+      });
+      resultsEl.appendChild(g2);
+    }
+  }
+  function gotoPage(p){
+    if(!RULES) return;
+    curPage=clamp(toInt(p),1,RULES.pageCount);
+    pvImg.classList.remove("zoom");
+    pvImg.src="rules/pages/"+pad4(curPage)+".webp";
+    pvPos.textContent="Page "+curPage+" / "+RULES.pageCount;
+    pvPrev.disabled=(curPage<=1); pvNext.disabled=(curPage>=RULES.pageCount);
+    bodyEl.style.display="none"; viewEl.classList.add("open"); pvScroll.scrollTop=0;
+  }
+
+  // ---------- boot ----------
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  document.getElementById("addBtn").addEventListener("click", function(){
+    var c=newChar(); STATE.chars.push(c); save();
+    if(STATE.chars.length===1) renderAll(); else listEl.appendChild(buildCard(c));
+    window.scrollTo({ top:document.body.scrollHeight, behavior: reduceMotion?"auto":"smooth" });
+  });
+  document.getElementById("rulesBtn").addEventListener("click", openRules);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flush(); });
+  // global safety net: a held stepper whose button got re-rendered away still stops on release
+  window.addEventListener("pointerup", function(){ if(activeHoldStop) activeHoldStop(); });
+  window.addEventListener("pointercancel", function(){ if(activeHoldStop) activeHoldStop(); });
+
+  load(); renderAll();
+})();
+</script>
+</body>
+</html>

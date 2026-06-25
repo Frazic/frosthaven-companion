@@ -1,0 +1,10 @@
+# Source rulebook PDF — 33MB build input, never served by the site
+fh-rule-book.pdf
+
+# TLS material (Raspberry Pi deploy only; never belongs in a public repo)
+certs/
+*.key
+*.crt
+
+# OS cruft
+.DS_Store
